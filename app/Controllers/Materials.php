@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\courseModel;
 use App\Models\MaterialModel;
+use App\Helpers\NotificationHelper;
 
 /**
  * Materials Controller
@@ -48,16 +49,15 @@ class Materials extends BaseController
         if($this->request->getMethod() === 'POST') {
             $file = $this->request->getFile('material_file');
 
-            // Validate uploaded file
-            // NOTE: Adjust file size (currently 100MB) and allowed extensions as needed
+            // Validate uploaded file - Only PDF and PPT files allowed
             $validation = \Config\Services::validation();
             $validation->setRules([
             'material_file' => [
-                'rules' => 'uploaded[material_file]|max_size[material_file,102400]|ext_in[material_file,pdf,doc,docx,ppt,pptx,zip]',
+                'rules' => 'uploaded[material_file]|max_size[material_file,102400]|ext_in[material_file,pdf,ppt]',
                 'errors' => [
                     'uploaded' => 'Please select a file.',
                     'max_size' => 'File is too large. Maximum size is 100MB.',
-                    'ext_in'  => 'Invalid file type. Allowed: pdf, doc, docx, ppt, pptx, zip.'
+                    'ext_in'  => 'Invalid file type. Only PDF and PowerPoint files (PDF, PPT) are allowed.'
                 ]
             ]
             ]);
@@ -82,6 +82,16 @@ class Materials extends BaseController
                 ];
 
                 $material->insertMaterial($data);
+                
+                // Send notification about material upload
+                $notificationHelper = new NotificationHelper();
+                $courseData = $course->find($course_id);
+                $uploaderName = (new \App\Models\UserModel())->find(session()->get('user_id'))['name'] ?? 'Unknown User';
+                $notificationHelper->notifyMaterialUploaded(
+                    $file->getClientName(),
+                    $courseData['title'] ?? 'Unknown Course',
+                    $uploaderName
+                );
                 
                 return redirect()->to(current_url())->with('success', 'Material uploaded successfully.');
             }
@@ -125,15 +135,24 @@ class Materials extends BaseController
         $file = $material->find($material_id);
 
         if ($file) {
-            // Delete the physical file from the server
-            if (file_exists(WRITEPATH . $file['file_path'])) {
-                unlink(WRITEPATH . $file['file_path']);
-            }
-
-            // Delete the record from the database
+            // Get course and user info for notification
+            $course = new courseModel();
+            $courseData = $course->find($file['course_id']);
+            $deleterName = (new \App\Models\UserModel())->find(session()->get('user_id'))['name'] ?? 'Unknown User';
+            
+            // Soft delete - only mark as deleted in database, keep physical file
+            // This allows for potential recovery of materials
             $material->delete($material_id);
 
-            return redirect()->back()->with('success', 'Material deleted successfully.');
+            // Send notification about material deletion
+            $notificationHelper = new NotificationHelper();
+            $notificationHelper->notifyMaterialDeleted(
+                $file['file_name'],
+                $courseData['title'] ?? 'Unknown Course',
+                $deleterName
+            );
+
+            return redirect()->back()->with('success', 'Material deleted successfully (can be recovered by admin).');
         } else {
             return redirect()->back()->with('error', 'File not found.');
         }

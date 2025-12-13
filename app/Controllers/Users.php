@@ -3,14 +3,17 @@
 namespace App\Controllers;
 
 use App\Models\UserModel;
+use App\Helpers\NotificationHelper;
 
 class Users extends BaseController
 {
     protected $userModel;
+    protected $notificationHelper;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
+        $this->notificationHelper = new NotificationHelper();
     }
 
     public function index()
@@ -63,6 +66,14 @@ class Users extends BaseController
         ];
 
         if ($this->userModel->insert($data)) {
+            // Send notification about new user creation
+            $creatorName = $this->notificationHelper->getUserName(session()->get('user_id'));
+            $this->notificationHelper->notifyUserCreated(
+                $data['name'],
+                $data['role'],
+                $creatorName
+            );
+            
             return $this->response->setJSON([
                 'status' => 'success',
                 'message' => 'User created successfully'
@@ -132,6 +143,13 @@ class Users extends BaseController
         }
 
         if ($this->userModel->update($id, $data)) {
+            // Send notification about user update
+            $updaterName = $this->notificationHelper->getUserName(session()->get('user_id'));
+            $this->notificationHelper->notifyUserUpdated(
+                $data['name'],
+                $updaterName
+            );
+            
             return $this->response->setJSON([
                 'status' => 'success',
                 'message' => 'User updated successfully'
@@ -158,8 +176,18 @@ class Users extends BaseController
             ]);
         }
 
+        // Get user info before deletion for notification
+        $userToDelete = $this->userModel->find($id);
+        
         // Soft delete - this will set deleted_at timestamp
         if ($this->userModel->delete($id)) {
+            // Send notification about user deletion
+            $deleterName = $this->notificationHelper->getUserName(session()->get('user_id'));
+            $this->notificationHelper->notifyUserDeleted(
+                $userToDelete['name'],
+                $deleterName
+            );
+            
             return $this->response->setJSON([
                 'status' => 'success',
                 'message' => 'User deleted successfully (marked as deleted)'

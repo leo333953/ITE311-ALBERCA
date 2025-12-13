@@ -56,11 +56,16 @@ abstract class BaseController extends Controller
 
         $this->session = session();
 
+        // Only load notifications if user is logged in, but don't redirect here
+        // Let individual controllers handle authentication as needed
         if($this->session->get('isLoggedIn')) {
-            $notificationModel = new \App\Models\NotificationModel();
-            $this->notificationCount = $notificationModel->getUnreadCount($this->session->get('userId'));
-        }else{
-            return redirect()->to('/login');
+            try {
+                $notificationModel = new \App\Models\NotificationModel();
+                $this->notificationCount = $notificationModel->getUnreadCount($this->session->get('user_id'));
+            } catch (\Exception $e) {
+                // If notifications table doesn't exist or there's an error, just set count to 0
+                $this->notificationCount = 0;
+            }
         }
     }
 }

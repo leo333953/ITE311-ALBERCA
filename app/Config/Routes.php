@@ -55,7 +55,16 @@ $routes->post('/users/delete/(:num)', 'Users::delete/$1');
 $routes->get('/users/get/(:num)', 'Users::get/$1');
 $routes->get('/reports', 'Reports::index');
 $routes->get('/courses', 'Course::index');
+$routes->post('/courses/create', 'Course::create');
+$routes->post('/courses/update/(:num)', 'Course::update/$1');
+$routes->post('/courses/delete/(:num)', 'Course::delete/$1');
+$routes->get('/courses/get/(:num)', 'Course::get/$1');
+$routes->get('/courses/search-admin', 'Course::searchAdmin');
 $routes->get('/settings', 'Settings::index');
+$routes->get('/soft-deletes', 'SoftDeletes::index');
+$routes->post('/soft-deletes/restore', 'SoftDeletes::restore');
+$routes->post('/soft-deletes/permanent-delete', 'SoftDeletes::permanentDelete');
+$routes->post('/soft-deletes/bulk-restore', 'SoftDeletes::bulkRestore');
 
 // Teacher Routes
 $routes->get('/courses/manage', 'Course::manage');
@@ -75,3 +84,30 @@ $routes->post('/notifications/mark-as-read/(:num)', 'Notifications::markAsRead/$
 //Lab Nien
 $routes->get('/courses/search', 'Course::search');
 $routes->post('/courses/search', 'Course::search');
+
+// Enrollment System Routes
+$routes->get('/enrollments', 'Enrollments::index');
+$routes->post('/enrollments/submit', 'Enrollments::submit');
+$routes->post('/enrollments/approve/(:num)', 'Enrollments::approve/$1');
+$routes->post('/enrollments/reject/(:num)', 'Enrollments::reject/$1');
+$routes->post('/enrollments/delete/(:num)', 'Enrollments::delete/$1');
+$routes->get('/enrollments/get/(:num)', 'Enrollments::get/$1');
+$routes->get('/enrollments/debug', 'Enrollments::debug');
+$routes->get('/enrollments/search', 'Enrollments::search');
+
+// Test routes
+$routes->get('/test-enrollment', 'TestEnrollment::index');
+$routes->get('/enrollment-demo', 'TestEnrollment::demo');
+$routes->get('/test-courses', 'TestCourses::index');
+$routes->get('/system-test', 'SystemTest::index');
+$routes->get('/quick-test', 'QuickTest::index');
+$routes->get('/test-admin', 'QuickTest::testAdmin');
+$routes->get('/test-student', 'QuickTest::testStudent');
+$routes->get('/test-teacher', 'QuickTest::testTeacher');
+$routes->get('/test-course-create', 'TestCourseCreate::index');
+$routes->post('/test-course-create/submit', 'TestCourseCreate::submit');
+$routes->get('/test-course-ajax', 'TestCourseCreate::testAjax');
+$routes->get('/status', 'SystemStatus::index');
+$routes->get('/test-upload', 'TestUpload::index');
+$routes->get('/test-routes', 'TestRoutes::index');
+$routes->get('/test-soft-delete', 'TestSoftDelete::index');

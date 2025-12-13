@@ -28,11 +28,14 @@
         <?= csrf_field() ?>
 
         <div class="form-group mb-3">
-            <label for="material_file" class="form-label">Select Material File (PDF, DOC, DOCX, PPT, PPTX, ZIP)</label>
-            <input type="file" name="material_file" id="material_file" class="form-control" required>
+            <label for="material_file" class="form-label">Select Material File (PDF, PPT only)</label>
+            <input type="file" name="material_file" id="material_file" class="form-control" accept=".pdf,.ppt" required>
+            <small class="form-text text-muted">
+                <i class="bi bi-info-circle"></i> Only PDF and PowerPoint files (PDF, PPT) are allowed. Maximum file size: 100MB.
+            </small>
         </div>
 
-        <button type="submit" class="btn btn-primary">Upload Material</button>
+        <button type="submit" class="btn btn-primary" id="uploadBtn">Upload Material</button>
     </form>
 
     <!-- Display existing materials with download and delete buttons for teachers and admins -->
@@ -90,3 +93,41 @@
         </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('material_file');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    fileInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const fileName = file.name.toLowerCase();
+            const allowedExtensions = ['.pdf', '.ppt'];
+            const isValidType = allowedExtensions.some(ext => fileName.endsWith(ext));
+            
+            if (!isValidType) {
+                alert('Invalid file type! Only PDF and PowerPoint files (PDF, PPT) are allowed.');
+                this.value = '';
+                uploadBtn.disabled = true;
+                return;
+            }
+            
+            // Check file size (100MB = 104857600 bytes)
+            if (file.size > 104857600) {
+                alert('File is too large! Maximum file size is 100MB.');
+                this.value = '';
+                uploadBtn.disabled = true;
+                return;
+            }
+            
+            uploadBtn.disabled = false;
+        }
+    });
+    
+    // Disable upload button initially if no file is selected
+    if (!fileInput.files.length) {
+        uploadBtn.disabled = true;
+    }
+});
+</script>

@@ -1,7 +1,3 @@
-<?php
-    include 'app\Views\index.php';
-?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>

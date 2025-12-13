@@ -442,15 +442,24 @@ function updateUser() {
 
 // Delete user
 function deleteUser(id) {
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to delete this user? This record will be soft deleted and can be recovered from the Soft Deletes section.')) {
         $.ajax({
             url: '<?= base_url('users/delete') ?>/' + id,
             type: 'POST',
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
+                    // Remove the user row from the table immediately
+                    $('button[onclick="deleteUser(' + id + ')"]').closest('tr').fadeOut(300, function() {
+                        $(this).remove();
+                        
+                        // Check if table is empty and show "no users" message
+                        if ($('#usersTable tbody tr:visible').length === 0) {
+                            $('#usersTable tbody').html('<tr><td colspan="5" class="text-center">No users found</td></tr>');
+                        }
+                    });
+                    
                     alert('User deleted successfully!');
-                    location.reload();
                 } else {
                     alert(response.message || 'Failed to delete user');
                 }

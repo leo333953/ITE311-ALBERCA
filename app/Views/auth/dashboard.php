@@ -8,6 +8,7 @@
             <?php if($user_role === 'admin'): ?>
                 <li class="nav-item mb-2"><a href="<?= base_url('dashboard') ?>" class="nav-link text-white active"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('users') ?>" class="nav-link text-white"><i class="bi bi-people-fill me-2"></i>Manage Users</a></li>
+                <li class="nav-item mb-2"><a href="<?= base_url('enrollments') ?>" class="nav-link text-white"><i class="bi bi-person-check me-2"></i>Enrollment Management</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('reports') ?>" class="nav-link text-white"><i class="bi bi-bar-chart-line me-2"></i>Analytics</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('courses') ?>" class="nav-link text-white"><i class="bi bi-journal-bookmark me-2"></i>Course Catalog</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('settings') ?>" class="nav-link text-white"><i class="bi bi-gear-fill me-2"></i>System Settings</a></li>
@@ -16,12 +17,14 @@
             <?php elseif($user_role === 'teacher'): ?>
                 <li class="nav-item mb-2"><a href="<?= base_url('courses/manage') ?>" class="nav-link text-white"><i class="bi bi-mortarboard me-2"></i>Manage Courses</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('students') ?>" class="nav-link text-white"><i class="bi bi-people me-2"></i>Students</a></li>
+                <li class="nav-item mb-2"><a href="<?= base_url('enrollments') ?>" class="nav-link text-white"><i class="bi bi-person-check me-2"></i>Enrollment Approval</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('lessons') ?>" class="nav-link text-white"><i class="bi bi-upload me-2"></i>Upload Lessons</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('announcements') ?>" class="nav-link text-white"><i class="bi bi-chat-left-text me-2"></i>Announcements</a></li>
                 
 
             <?php elseif($user_role === 'student'): ?>
                 <li class="nav-item mb-2"><a href="<?= base_url('courses') ?>" class="nav-link text-white"><i class="bi bi-book me-2"></i>My Courses</a></li>
+                <li class="nav-item mb-2"><a href="<?= base_url('enrollments') ?>" class="nav-link text-white"><i class="bi bi-person-plus me-2"></i>Enrollment Application</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('assignments') ?>" class="nav-link text-white"><i class="bi bi-file-earmark-text me-2"></i>Assignments</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('groups') ?>" class="nav-link text-white"><i class="bi bi-people me-2"></i>Study Groups</a></li>
                 <li class="nav-item mb-2"><a href="<?= base_url('progress') ?>" class="nav-link text-white"><i class="bi bi-trophy me-2"></i>Progress</a></li>

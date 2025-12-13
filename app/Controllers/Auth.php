@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Models\EnrollmentModel;
 use App\Models\MaterialModel;
+use App\Helpers\NotificationHelper;
 
 class Auth extends BaseController
 {
@@ -12,12 +13,14 @@ class Auth extends BaseController
     protected $validation;
     protected $db;
     protected $enrollmentModel;
+    protected $notificationHelper;
 
     public function __construct()
     {
         $this->session = \Config\Services::session();
         $this->validation = \Config\Services::validation();
         $this->db = \Config\Database::connect();
+        $this->notificationHelper = new NotificationHelper();
         $this->enrollmentModel = new EnrollmentModel();
     }
 
@@ -52,6 +55,13 @@ class Auth extends BaseController
 
                 $builder = $this->db->table('users');
                 if ($builder->insert($userData)) {
+                    // Send notification about new user registration
+                    $this->notificationHelper->notifyUserCreated(
+                        $userData['name'],
+                        'student',
+                        'Self-Registration'
+                    );
+                    
                     $this->session->setFlashdata('success', 'Registration successful! Please login.');
                     return redirect()->to(base_url('login'));
                 } else {
@@ -99,6 +109,9 @@ class Auth extends BaseController
                     $this->session->set($sessionData);
                     $this->session->setFlashdata('success', 'Welcome back, ' . $user['name'] . '!');
 
+                    // Send login notification
+                    $this->notificationHelper->notifyLogin($user['name'], ucfirst($user['role']));
+
                     return redirect()->to(base_url('dashboard'));
                 } else {
                     $this->session->setFlashdata('error', 'Invalid email or password.');
@@ -115,6 +128,13 @@ class Auth extends BaseController
     // LOGOUT
     public function logout()
     {
+        // Send logout notification before destroying session
+        if ($this->session->get('isLoggedIn')) {
+            $userName = $this->session->get('name');
+            $userRole = ucfirst($this->session->get('role'));
+            $this->notificationHelper->notifyLogout($userName, $userRole);
+        }
+        
         $this->session->destroy();
         return redirect()->to(base_url('login'));
     }
@@ -148,13 +168,23 @@ class Auth extends BaseController
                 ->getResultArray();
         }
 
-        $enrollmentModel = new EnrollmentModel();
-        $enrolledCourses = $enrollmentModel->getEnrollmentsByUser($user_id);
+        // Get enrolled courses for students
+        if ($user_role === 'student') {
+            $enrolledCourses = $this->db->table('enrollments')
+                ->select('courses.id, courses.title, courses.description')
+                ->join('courses', 'enrollments.course_id = courses.id', 'left')
+                ->where('enrollments.user_id', $user_id)
+                ->where('enrollments.status', 'approved')
+                ->get()
+                ->getResultArray();
+        }
 
-        $materialsModel = new MaterialModel();
-
-        foreach ($enrolledCourses as &$course) {
-            $course['materials'] = $materialsModel->getMaterialsByCourse($course['id']);
+        // Get materials for enrolled courses
+        if ($user_role === 'student' && !empty($enrolledCourses)) {
+            $materialsModel = new MaterialModel();
+            foreach ($enrolledCourses as &$course) {
+                $course['materials'] = $materialsModel->getMaterialsByCourse($course['id']);
+            }
         }
 
 

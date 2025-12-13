@@ -95,6 +95,15 @@ class EnrollmentModel extends Model
                    ->first() !== null;
     }
 
+    // Check if student is enrolled in a specific course
+    public function isStudentEnrolledInCourse($email, $courseId)
+    {
+        return $this->where('email', $email)
+                   ->where('course_id', $courseId)
+                   ->where('status !=', 'rejected')
+                   ->first() !== null;
+    }
+
     // Approve enrollment
     public function approveEnrollment($enrollmentId, $approvedBy, $remarks = null)
     {
@@ -130,6 +139,16 @@ class EnrollmentModel extends Model
             'approved' => $this->where('status', 'approved')->countAllResults(false),
             'rejected' => $this->where('status', 'rejected')->countAllResults()
         ];
+    }
+
+    // Check if user is already enrolled in a course
+    public function isAlreadyEnrolled($user_id, $course_id)
+    {
+        return $this->where('user_id', $user_id)
+                   ->where('course_id', $course_id)
+                   ->where('status !=', 'rejected')
+                   ->where('deleted_at IS NULL')
+                   ->first() !== null;
     }
 
     // Generate unique student number

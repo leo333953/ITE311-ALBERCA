@@ -128,7 +128,8 @@ class Enrollments extends BaseController
             'email' => 'required|valid_email',
             'phone_number' => 'required',
             'address' => 'required',
-            'date_of_birth' => 'required|valid_date'
+            'date_of_birth' => 'required|valid_date',
+            'course_id' => 'required|numeric'
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {
@@ -140,8 +141,8 @@ class Enrollments extends BaseController
         }
 
         $email = $this->request->getPost('email');
-        
         $studentId = $this->request->getPost('student_id');
+        $courseId = $this->request->getPost('course_id');
         
         // Check if student ID is already used
         if ($this->enrollmentModel->where('student_number', $studentId)->first()) {
@@ -151,11 +152,26 @@ class Enrollments extends BaseController
             ]);
         }
         
-        // Check if email is already enrolled
-        if ($this->enrollmentModel->isStudentEnrolled($email)) {
+        // Check if student is already enrolled in this specific course
+        $existingEnrollment = $this->enrollmentModel
+            ->where('email', $email)
+            ->where('course_id', $courseId)
+            ->where('status !=', 'rejected')
+            ->first();
+            
+        if ($existingEnrollment) {
             return $this->response->setJSON([
                 'status' => 'error',
-                'message' => 'You have already submitted an enrollment application with this email.'
+                'message' => 'You have already submitted an enrollment application for this course.'
+            ]);
+        }
+
+        // Verify course exists
+        $course = $this->courseModel->find($courseId);
+        if (!$course) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Selected course not found.'
             ]);
         }
 
@@ -176,7 +192,7 @@ class Enrollments extends BaseController
             
             // Required legacy fields
             'user_id' => session()->get('user_id') ?? 0,
-            'course_id' => 1, // Default course ID since we're using course_program now
+            'course_id' => $courseId,
             'enrollment_date' => date('Y-m-d H:i:s')
         ];
 
@@ -185,13 +201,13 @@ class Enrollments extends BaseController
                 // Send notification about new enrollment
                 $this->notificationHelper->notifyEnrollmentSubmitted(
                     $this->request->getPost('full_name'),
-                    $this->request->getPost('course_program'),
+                    $course['course_name'] ?? $course['title'],
                     $studentId
                 );
                 
                 return $this->response->setJSON([
                     'status' => 'success',
-                    'message' => 'Enrollment submitted successfully. Your Student ID is: ' . $studentId . '. Status: Pending approval.'
+                    'message' => 'Enrollment application submitted successfully! You will be notified once it is reviewed.'
                 ]);
             } else {
                 // Get database errors

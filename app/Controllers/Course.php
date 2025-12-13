@@ -11,6 +11,14 @@ class Course extends BaseController
 {
     public function enroll()
     {
+        // Add debugging
+        log_message('info', 'Enrollment attempt - Session: ' . json_encode([
+            'isLoggedIn' => session()->get('isLoggedIn'),
+            'user_id' => session()->get('user_id'),
+            'role' => session()->get('role')
+        ]));
+        log_message('info', 'Enrollment attempt - POST data: ' . json_encode($this->request->getPost()));
+        
         if (!session()->get('isLoggedIn')) {
             return $this->response->setJSON([
                 'status' => 'error',
@@ -40,34 +48,46 @@ class Course extends BaseController
         $data = [
             'user_id' => $user_id,
             'course_id' => $course_id,
-            'enrollment_date' => date('Y-m-d H:i:s')
+            'enrollment_date' => date('Y-m-d H:i:s'),
+            'status' => 'approved'  // Direct enrollment is immediately approved
         ];
+
+        log_message('info', 'Enrollment data to insert: ' . json_encode($data));
 
         try {
             if ($enrollmentModel->insert($data)) {
+                log_message('info', 'Enrollment successful with ID: ' . $enrollmentModel->getInsertID());
+                
                 // Get course details for notification
                 $courseModel = new CourseModel();
                 $course = $courseModel->find($course_id);
                 $courseName = $course ? $course['title'] : 'a course';
                 
-                // Create notification
-                $notificationModel = new NotificationModel();
-                $notificationModel->createNotification(
-                    $user_id, 
-                    "You have successfully enrolled in {$courseName}!"
-                );
+                // Create notification (skip if NotificationModel doesn't exist)
+                try {
+                    $notificationModel = new NotificationModel();
+                    $notificationModel->createNotification(
+                        $user_id, 
+                        "You have successfully enrolled in {$courseName}!"
+                    );
+                } catch (\Exception $notifError) {
+                    log_message('warning', 'Notification creation failed: ' . $notifError->getMessage());
+                }
                 
                 return $this->response->setJSON([
                     'status' => 'success',
                     'message' => 'Enrollment successful!'
                 ]);
             } else {
+                $errors = $enrollmentModel->errors();
+                log_message('error', 'Enrollment insert failed - Model errors: ' . json_encode($errors));
                 return $this->response->setJSON([
                     'status' => 'error',
-                    'message' => 'Enrollment failed. Please try again.'
+                    'message' => 'Enrollment failed: ' . (empty($errors) ? 'Unknown database error' : implode(', ', $errors))
                 ]);
             }
         } catch (\Exception $e) {
+            log_message('error', 'Enrollment exception: ' . $e->getMessage());
             return $this->response->setJSON([
                 'status' => 'error',
                 'message' => 'Database error: ' . $e->getMessage()
@@ -106,13 +126,14 @@ class Course extends BaseController
             $userId = session()->get('user_id');
             $enrollmentModel = new EnrollmentModel();
             
-            // Fix the method call - use a working method
+            // Get enrolled courses - check for both 'enrolled' and 'approved' status
             $db = \Config\Database::connect();
             $courses = $db->table('enrollments')
                 ->select('courses.id, courses.title, courses.description')
                 ->join('courses', 'courses.id = enrollments.course_id', 'left')
                 ->where('enrollments.user_id', $userId)
-                ->where('enrollments.status', 'approved')
+                ->whereIn('enrollments.status', ['enrolled', 'approved'])
+                ->where('enrollments.deleted_at IS NULL')
                 ->get()
                 ->getResultArray();
 
@@ -161,7 +182,7 @@ class Course extends BaseController
         $builder->select('courses.id, courses.title, courses.description');
         $builder->join('courses', 'courses.id = enrollments.course_id', 'left');
         $builder->where('enrollments.user_id', $userId);
-        $builder->where('enrollments.status', 'approved'); // Only show approved enrollments
+        $builder->whereIn('enrollments.status', ['enrolled', 'approved']); // Show enrolled and approved enrollments
         
         if (!empty($searchTerm)) {
             $builder->groupStart();
@@ -201,9 +222,15 @@ class Course extends BaseController
 
         $validation = \Config\Services::validation();
         $validation->setRules([
+            'course_code' => 'required|min_length[3]|max_length[20]',
+            'course_name' => 'required|min_length[3]',
             'title' => 'required|min_length[3]',
             'description' => 'required|min_length[10]',
-            'instructor_id' => 'permit_empty|integer'
+            'year_level' => 'required|in_list[1st Year,2nd Year,3rd Year,4th Year]',
+            'semester' => 'required|in_list[1st Semester,2nd Semester,Summer]',
+            'academic_year' => 'required|min_length[9]',
+            'instructor_id' => 'permit_empty|integer',
+            'status' => 'required|in_list[Active,Inactive,Archived]'
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {
@@ -218,9 +245,15 @@ class Course extends BaseController
         try {
             $courseModel = new CourseModel();
             $data = [
+                'course_code' => $this->request->getPost('course_code'),
+                'course_name' => $this->request->getPost('course_name'),
                 'title' => $this->request->getPost('title'),
                 'description' => $this->request->getPost('description'),
-                'instructor_id' => $this->request->getPost('instructor_id') ?: null
+                'year_level' => $this->request->getPost('year_level'),
+                'semester' => $this->request->getPost('semester'),
+                'academic_year' => $this->request->getPost('academic_year'),
+                'instructor_id' => $this->request->getPost('instructor_id') ?: null,
+                'status' => $this->request->getPost('status')
             ];
             
             log_message('info', 'Course create - Data to insert: ' . json_encode($data));
@@ -275,9 +308,15 @@ class Course extends BaseController
 
         $validation = \Config\Services::validation();
         $validation->setRules([
+            'course_code' => 'required|min_length[3]|max_length[20]',
+            'course_name' => 'required|min_length[3]',
             'title' => 'required|min_length[3]',
             'description' => 'required|min_length[10]',
-            'instructor_id' => 'permit_empty|integer'
+            'year_level' => 'required|in_list[1st Year,2nd Year,3rd Year,4th Year]',
+            'semester' => 'required|in_list[1st Semester,2nd Semester,Summer]',
+            'academic_year' => 'required|min_length[9]',
+            'instructor_id' => 'permit_empty|integer',
+            'status' => 'required|in_list[Active,Inactive,Archived]'
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {
@@ -289,9 +328,15 @@ class Course extends BaseController
         }
 
         $data = [
+            'course_code' => $this->request->getPost('course_code'),
+            'course_name' => $this->request->getPost('course_name'),
             'title' => $this->request->getPost('title'),
             'description' => $this->request->getPost('description'),
+            'year_level' => $this->request->getPost('year_level'),
+            'semester' => $this->request->getPost('semester'),
+            'academic_year' => $this->request->getPost('academic_year'),
             'instructor_id' => $this->request->getPost('instructor_id') ?: null,
+            'status' => $this->request->getPost('status'),
             'updated_at' => date('Y-m-d H:i:s')
         ];
 
@@ -375,6 +420,35 @@ class Course extends BaseController
         ]);
     }
     
+    // Get all teachers for dropdown
+    public function getTeachers()
+    {
+        if (session()->get('isLoggedIn') !== true || !in_array(session()->get('role'), ['admin', 'teacher'])) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized']);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $teachers = $db->table('users')
+                ->select('id, name, email')
+                ->where('role', 'teacher')
+                ->where('deleted_at IS NULL')
+                ->orderBy('name', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'status' => 'success',
+                'teachers' => $teachers
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Failed to load teachers: ' . $e->getMessage()
+            ]);
+        }
+    }
+
     // Admin/Teacher: Advanced search for courses
     public function searchAdmin()
     {

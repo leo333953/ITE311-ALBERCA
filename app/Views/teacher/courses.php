@@ -51,27 +51,41 @@
                         <table class="table table-striped" id="coursesTable">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Course Title</th>
-                                    <th>Description</th>
-                                    <th>Instructor</th>
-                                    <th>Created</th>
+                                    <th>Course Code</th>
+                                    <th>Course Name</th>
+                                    <th>Year & Semester</th>
+                                    <th>Academic Year</th>
+                                    <th>Status</th>
+                                    <th>Assigned Teacher</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($courses)): ?>
                                     <tr>
-                                        <td colspan="6" class="text-center">No courses found</td>
+                                        <td colspan="7" class="text-center">No courses found</td>
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($courses as $course): ?>
                                         <tr>
-                                            <td><?= $course['id'] ?></td>
-                                            <td><strong><?= esc($course['title']) ?></strong></td>
-                                            <td><?= esc(substr($course['description'], 0, 100)) ?><?= strlen($course['description']) > 100 ? '...' : '' ?></td>
-                                            <td><?= $course['instructor_id'] ? 'Instructor ID: ' . $course['instructor_id'] : 'Not Assigned' ?></td>
-                                            <td><?= isset($course['created_at']) ? date('M d, Y', strtotime($course['created_at'])) : 'N/A' ?></td>
+                                            <td><strong><?= esc($course['course_code'] ?? 'N/A') ?></strong></td>
+                                            <td>
+                                                <strong><?= esc($course['course_name'] ?? $course['title']) ?></strong><br>
+                                                <small class="text-muted"><?= esc(substr($course['description'] ?? '', 0, 60)) ?><?= strlen($course['description'] ?? '') > 60 ? '...' : '' ?></small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary"><?= esc($course['year_level'] ?? 'N/A') ?></span><br>
+                                                <small><?= esc($course['semester'] ?? 'N/A') ?></small>
+                                            </td>
+                                            <td><?= esc($course['academic_year'] ?? 'N/A') ?></td>
+                                            <td>
+                                                <?php 
+                                                $status = $course['status'] ?? 'Active';
+                                                $statusClass = $status === 'Active' ? 'bg-success' : ($status === 'Inactive' ? 'bg-warning' : 'bg-secondary');
+                                                ?>
+                                                <span class="badge <?= $statusClass ?>"><?= esc($status) ?></span>
+                                            </td>
+                                            <td><?= $course['instructor_id'] ? 'ID: ' . $course['instructor_id'] : '<span class="text-muted">Not Assigned</span>' ?></td>
                                             <td>
                                                 <div class="btn-group" role="group">
                                                     <button class="btn btn-sm btn-info" onclick="viewCourse(<?= $course['id'] ?>)">
@@ -113,20 +127,84 @@
                     <input type="hidden" id="courseId" name="course_id">
                     <input type="hidden" name="<?= csrf_token() ?>" value="<?= csrf_hash() ?>" />
                     
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="courseCode" class="form-label">Course Code *</label>
+                                <input type="text" class="form-control" id="courseCode" name="course_code" placeholder="e.g., CS101" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="courseName" class="form-label">Course Name *</label>
+                                <input type="text" class="form-control" id="courseName" name="course_name" placeholder="e.g., Introduction to Programming" required>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="mb-3">
                         <label for="courseTitle" class="form-label">Course Title *</label>
-                        <input type="text" class="form-control" id="courseTitle" name="title" required>
+                        <input type="text" class="form-control" id="courseTitle" name="title" placeholder="Full course title" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="yearLevel" class="form-label">Year Level *</label>
+                                <select class="form-control" id="yearLevel" name="year_level" required>
+                                    <option value="">Select Year Level</option>
+                                    <option value="1st Year">1st Year</option>
+                                    <option value="2nd Year">2nd Year</option>
+                                    <option value="3rd Year">3rd Year</option>
+                                    <option value="4th Year">4th Year</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="semester" class="form-label">Semester *</label>
+                                <select class="form-control" id="semester" name="semester" required>
+                                    <option value="">Select Semester</option>
+                                    <option value="1st Semester">1st Semester</option>
+                                    <option value="2nd Semester">2nd Semester</option>
+                                    <option value="Summer">Summer</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="academicYear" class="form-label">Academic Year *</label>
+                                <input type="text" class="form-control" id="academicYear" name="academic_year" placeholder="e.g., 2025-2026" value="2025-2026" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="courseStatus" class="form-label">Status *</label>
+                                <select class="form-control" id="courseStatus" name="status" required>
+                                    <option value="">Select Status</option>
+                                    <option value="Active" selected>Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Archived">Archived</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="instructorId" class="form-label">Assigned Teacher (Optional)</label>
+                        <select class="form-control" id="instructorId" name="instructor_id">
+                            <option value="">Select Teacher (Optional)</option>
+                            <!-- Teachers will be loaded dynamically -->
+                        </select>
+                        <small class="text-muted">Select a teacher from the list or leave unassigned</small>
                     </div>
                     
                     <div class="mb-3">
                         <label for="courseDescription" class="form-label">Description *</label>
-                        <textarea class="form-control" id="courseDescription" name="description" rows="4" required></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="instructorId" class="form-label">Instructor ID (Optional)</label>
-                        <input type="number" class="form-control" id="instructorId" name="instructor_id" placeholder="Leave empty if not assigned">
-                        <small class="text-muted">Enter the user ID of the instructor, or leave empty</small>
+                        <textarea class="form-control" id="courseDescription" name="description" rows="4" placeholder="Course description and objectives" required></textarea>
                     </div>
                 </form>
             </div>
@@ -446,12 +524,46 @@ function showCreateModal() {
     $('#courseModalTitle').text('Add New Course');
     $('#courseForm')[0].reset();
     $('#courseId').val('');
+    // Set default values
+    $('#academicYear').val('2025-2026');
+    $('#courseStatus').val('Active');
+    
+    // Load teachers for dropdown
+    loadTeachers();
+    
     $('#courseModal').modal('show');
+}
+
+function loadTeachers() {
+    $.ajax({
+        url: '<?= base_url('courses/teachers') ?>',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                const teacherSelect = $('#instructorId');
+                teacherSelect.empty();
+                teacherSelect.append('<option value="">Select Teacher (Optional)</option>');
+                
+                response.teachers.forEach(function(teacher) {
+                    teacherSelect.append(`<option value="${teacher.id}">${teacher.name} (${teacher.email})</option>`);
+                });
+            } else {
+                console.error('Failed to load teachers:', response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading teachers:', error);
+        }
+    });
 }
 
 function editCourse(id) {
     isEditMode = true;
     $('#courseModalTitle').text('Edit Course');
+    
+    // Load teachers first, then get course details
+    loadTeachers();
     
     // Get course details
     $.ajax({
@@ -462,9 +574,20 @@ function editCourse(id) {
             if (response.status === 'success') {
                 const course = response.course;
                 $('#courseId').val(course.id);
+                $('#courseCode').val(course.course_code || '');
+                $('#courseName').val(course.course_name || '');
                 $('#courseTitle').val(course.title);
                 $('#courseDescription').val(course.description);
-                $('#instructorId').val(course.instructor_id || '');
+                $('#yearLevel').val(course.year_level || '');
+                $('#semester').val(course.semester || '');
+                $('#academicYear').val(course.academic_year || '');
+                $('#courseStatus').val(course.status || 'Active');
+                
+                // Set instructor after teachers are loaded
+                setTimeout(function() {
+                    $('#instructorId').val(course.instructor_id || '');
+                }, 500);
+                
                 $('#courseModal').modal('show');
             } else {
                 alert('Error: ' + response.message);
@@ -477,6 +600,11 @@ function editCourse(id) {
 }
 
 function saveCourse() {
+    // Validate form before submitting
+    if (!validateCourseForm()) {
+        return;
+    }
+    
     const formData = new FormData($('#courseForm')[0]);
     const courseId = $('#courseId').val();
     
@@ -487,6 +615,11 @@ function saveCourse() {
     if (isEditMode && courseId) {
         url = '<?= base_url('courses/update/') ?>' + courseId;
     }
+    
+    // Show loading state
+    const saveBtn = $('button[onclick="saveCourse()"]');
+    const originalText = saveBtn.text();
+    saveBtn.prop('disabled', true).text('Saving...');
     
     $.ajax({
         url: url,
@@ -501,15 +634,33 @@ function saveCourse() {
                 $('#courseModal').modal('hide');
                 location.reload();
             } else {
-                alert('Error: ' + response.message);
+                let errorMessage = 'Error: ' + response.message;
                 if (response.errors) {
                     console.log('Validation errors:', response.errors);
+                    const errorList = Object.values(response.errors).join('\n');
+                    errorMessage += '\n\nValidation errors:\n' + errorList;
                 }
+                alert(errorMessage);
             }
         },
         error: function(xhr, status, error) {
             console.log('AJAX Error:', xhr.responseText);
-            alert('An error occurred while saving the course: ' + error);
+            let errorMessage = 'An error occurred while saving the course.';
+            
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.message) {
+                    errorMessage = response.message;
+                }
+            } catch (e) {
+                errorMessage += ' Status: ' + error;
+            }
+            
+            alert(errorMessage);
+        },
+        complete: function() {
+            // Restore button state
+            saveBtn.prop('disabled', false).text(originalText);
         }
     });
 }
@@ -589,5 +740,63 @@ function deleteCourse(id) {
             }
         });
     }
+}
+
+function validateCourseForm() {
+    const requiredFields = [
+        { id: 'courseCode', name: 'Course Code' },
+        { id: 'courseName', name: 'Course Name' },
+        { id: 'courseTitle', name: 'Course Title' },
+        { id: 'courseDescription', name: 'Description' },
+        { id: 'yearLevel', name: 'Year Level' },
+        { id: 'semester', name: 'Semester' },
+        { id: 'academicYear', name: 'Academic Year' },
+        { id: 'courseStatus', name: 'Status' }
+    ];
+    
+    let isValid = true;
+    let errorMessages = [];
+    
+    // Clear previous error styling
+    $('.form-control').removeClass('is-invalid');
+    
+    requiredFields.forEach(function(field) {
+        const value = $('#' + field.id).val().trim();
+        if (!value) {
+            $('#' + field.id).addClass('is-invalid');
+            errorMessages.push(field.name + ' is required');
+            isValid = false;
+        }
+    });
+    
+    // Validate course code format
+    const courseCode = $('#courseCode').val().trim();
+    if (courseCode && courseCode.length < 3) {
+        $('#courseCode').addClass('is-invalid');
+        errorMessages.push('Course Code must be at least 3 characters');
+        isValid = false;
+    }
+    
+    // Validate description length
+    const description = $('#courseDescription').val().trim();
+    if (description && description.length < 10) {
+        $('#courseDescription').addClass('is-invalid');
+        errorMessages.push('Description must be at least 10 characters');
+        isValid = false;
+    }
+    
+    // Validate academic year format
+    const academicYear = $('#academicYear').val().trim();
+    if (academicYear && !/^\d{4}-\d{4}$/.test(academicYear)) {
+        $('#academicYear').addClass('is-invalid');
+        errorMessages.push('Academic Year must be in format YYYY-YYYY (e.g., 2025-2026)');
+        isValid = false;
+    }
+    
+    if (!isValid) {
+        alert('Please fix the following errors:\n\n' + errorMessages.join('\n'));
+    }
+    
+    return isValid;
 }
 </script>

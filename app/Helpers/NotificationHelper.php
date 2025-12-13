@@ -225,6 +225,40 @@ class NotificationHelper
         $this->sendToStudents($message);
     }
 
+    /**
+     * Notify only students enrolled in a specific course about new material
+     */
+    public function notifyEnrolledStudents($courseId, $fileName, $courseTitle, $uploaderName)
+    {
+        $message = "New material '{$fileName}' is now available in your course '{$courseTitle}'";
+        
+        // Get all enrolled students for this course
+        $db = \Config\Database::connect();
+        $enrolledStudents = $db->table('enrollments e')
+            ->select('u.id as user_id, u.name, u.email')
+            ->join('users u', 'e.user_id = u.id', 'inner')
+            ->where('e.course_id', $courseId)
+            ->whereIn('e.status', ['approved', 'enrolled'])
+            ->where('e.deleted_at IS NULL')
+            ->where('u.role', 'student')
+            ->get()
+            ->getResultArray();
+        
+        // Send notification to each enrolled student
+        $notifiedCount = 0;
+        foreach ($enrolledStudents as $student) {
+            if ($this->sendToUser($student['user_id'], $message)) {
+                $notifiedCount++;
+            }
+        }
+        
+        // Also notify admins and teachers
+        $adminMessage = "New material '{$fileName}' uploaded to course '{$courseTitle}' by {$uploaderName} - {$notifiedCount} students notified";
+        $this->sendToAdmins($adminMessage);
+        
+        return $notifiedCount;
+    }
+
     public function notifyMaterialDeleted($fileName, $courseTitle, $deleterName)
     {
         $message = "Material '{$fileName}' has been deleted from course '{$courseTitle}' by {$deleterName}";

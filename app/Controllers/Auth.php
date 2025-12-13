@@ -157,36 +157,30 @@ class Auth extends BaseController
             ->get()
             ->getResultArray();
 
-        // Fetch student enrolled courses
+        // Fetch student enrolled courses - check both by user_id and email
         $enrolledCourses = [];
         if ($user_role === 'student') {
+            $user_email = $this->session->get('email');
             $enrolledCourses = $this->db->table('enrollments')
                 ->select('courses.id, courses.title, courses.description')
                 ->join('courses', 'enrollments.course_id = courses.id', 'left')
-                ->where('enrollments.user_id', $user_id)
-                ->get()
-                ->getResultArray();
-        }
-
-        // Get enrolled courses for students
-        if ($user_role === 'student') {
-            $enrolledCourses = $this->db->table('enrollments')
-                ->select('courses.id, courses.title, courses.description')
-                ->join('courses', 'enrollments.course_id = courses.id', 'left')
-                ->where('enrollments.user_id', $user_id)
-                ->where('enrollments.status', 'approved')
+                ->groupStart()
+                    ->where('enrollments.user_id', $user_id)
+                    ->orWhere('enrollments.email', $user_email)
+                ->groupEnd()
+                ->whereIn('enrollments.status', ['enrolled', 'approved'])
+                ->where('enrollments.deleted_at IS NULL')
                 ->get()
                 ->getResultArray();
         }
 
         // Get materials for enrolled courses
-        if ($user_role === 'student' && !empty($enrolledCourses)) {
+        if ($user_role === 'student') {
             $materialsModel = new MaterialModel();
             foreach ($enrolledCourses as &$course) {
                 $course['materials'] = $materialsModel->getMaterialsByCourse($course['id']);
             }
         }
-
 
         $role = session()->get('role');
         $data = [
@@ -195,9 +189,7 @@ class Auth extends BaseController
             'courses'         => $courses,
             'enrolledCourses' => $enrolledCourses,
             'role' => $role
-            
         ];
-
 
         return view('auth/dashboard', $data);
     }

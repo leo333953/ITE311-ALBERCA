@@ -20,34 +20,63 @@ class UserModel extends Model
         'password',
         'role',
         'created_at',
+        'updated_at',
         'deleted_at'
     ];
 
-    // Automatically hash passwords
-    protected $beforeInsert = ['hashPassword'];
-    protected $beforeUpdate = ['hashPassword'];
+    protected $useTimestamps = true;
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
 
-    protected function hashPassword(array $data)
+    // Get users by role
+    public function getUsersByRole($role)
     {
-        if (isset($data['data']['password']) && !empty($data['data']['password'])) {
-            $data['data']['password'] = password_hash($data['data']['password'], PASSWORD_DEFAULT);
-        }
-        return $data;
+        return $this->where('role', $role)
+                   ->where('deleted_at IS NULL')
+                   ->orderBy('name', 'ASC')
+                   ->findAll();
     }
 
-    // Helper: get users by role
-    public function getUsersByRole(string $role)
+    // Get all students
+    public function getStudents()
     {
-        return $this->where('role', $role)->findAll();
+        return $this->getUsersByRole('student');
     }
 
-    // Helper: verify login
-    public function verifyUser(string $email, string $password)
+    // Get all teachers
+    public function getTeachers()
     {
-        $user = $this->where('email', $email)->first();
-        if ($user && password_verify($password, $user['password'])) {
-            return $user;
+        return $this->getUsersByRole('teacher');
+    }
+
+    // Get all admins
+    public function getAdmins()
+    {
+        return $this->getUsersByRole('admin');
+    }
+
+    // Search users
+    public function searchUsers($searchTerm)
+    {
+        return $this->groupStart()
+                   ->like('name', $searchTerm)
+                   ->orLike('email', $searchTerm)
+                   ->groupEnd()
+                   ->where('deleted_at IS NULL')
+                   ->orderBy('name', 'ASC')
+                   ->findAll();
+    }
+
+    // Check if email exists
+    public function emailExists($email, $excludeId = null)
+    {
+        $builder = $this->where('email', $email)
+                       ->where('deleted_at IS NULL');
+        
+        if ($excludeId) {
+            $builder->where('id !=', $excludeId);
         }
-        return null;
+        
+        return $builder->first() !== null;
     }
 }

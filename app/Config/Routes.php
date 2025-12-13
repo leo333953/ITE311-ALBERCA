@@ -15,22 +15,8 @@ $routes->post('/register', 'Auth::register');
 $routes->get('/login', 'Auth::login');
 $routes->post('/login', 'Auth::login');
 
-$routes->get('auth/logout', 'Auth::logout'); 
+$routes->get('auth/logout', 'Auth::logout');
 $routes->get('/dashboard', 'Auth::dashboard');
-
-// Temporary routes for Step 2 testing - Add these lines
-$routes->get('/admin/dashboard', function() {
-    return "Step 2 Working! Admin Dashboard - Role: " . session()->get('role');
-});
-
-$routes->get('/teacher/dashboard', function() {
-    return "Step 2 Working! Teacher Dashboard - Role: " . session()->get('role');
-});
-
-$routes->get('/student/dashboard', function() {
-    return "Step 2 Working! Student Dashboard - Role: " . session()->get('role');
-});
-
 $routes->get('dashboard', 'Auth::dashboard');
 // For enrolling via AJAX
 $routes->post('course/enroll', 'Course::enroll');
@@ -59,6 +45,7 @@ $routes->post('/courses/create', 'Course::create');
 $routes->post('/courses/update/(:num)', 'Course::update/$1');
 $routes->post('/courses/delete/(:num)', 'Course::delete/$1');
 $routes->get('/courses/get/(:num)', 'Course::get/$1');
+$routes->get('/courses/teachers', 'Course::getTeachers');
 $routes->get('/courses/search-admin', 'Course::searchAdmin');
 $routes->get('/settings', 'Settings::index');
 $routes->get('/soft-deletes', 'SoftDeletes::index');
@@ -85,15 +72,7 @@ $routes->post('/notifications/mark-as-read/(:num)', 'Notifications::markAsRead/$
 $routes->get('/courses/search', 'Course::search');
 $routes->post('/courses/search', 'Course::search');
 
-// Enrollment System Routes
-$routes->get('/enrollments', 'Enrollments::index');
-$routes->post('/enrollments/submit', 'Enrollments::submit');
-$routes->post('/enrollments/approve/(:num)', 'Enrollments::approve/$1');
-$routes->post('/enrollments/reject/(:num)', 'Enrollments::reject/$1');
-$routes->post('/enrollments/delete/(:num)', 'Enrollments::delete/$1');
-$routes->get('/enrollments/get/(:num)', 'Enrollments::get/$1');
-$routes->get('/enrollments/debug', 'Enrollments::debug');
-$routes->get('/enrollments/search', 'Enrollments::search');
+// Enrollment routes removed - using direct enrollment only
 
 // Test routes
 $routes->get('/test-enrollment', 'TestEnrollment::index');

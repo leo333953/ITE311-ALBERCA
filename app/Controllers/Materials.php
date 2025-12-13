@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Models\courseModel;
+use App\Models\CourseModel;
 use App\Models\MaterialModel;
 use App\Helpers\NotificationHelper;
 
@@ -38,13 +38,14 @@ class Materials extends BaseController
             return redirect()->to('/login');
         }
 
-        // NOTE: Add instructor check here
-        // Example: if(session()->get('role') !== 'instructor') {
-        //     return redirect()->back()->with('error', 'Only instructors can upload materials.');
-        // }
+        // Check if user is teacher or admin
+        $userRole = session()->get('role');
+        if (!in_array($userRole, ['teacher', 'admin'])) {
+            return redirect()->back()->with('error', 'Only teachers and admins can upload materials.');
+        }
 
         $material = new MaterialModel();
-        $course = new courseModel();
+        $course = new CourseModel();
 
         if($this->request->getMethod() === 'POST') {
             $file = $this->request->getFile('material_file');
@@ -83,15 +84,18 @@ class Materials extends BaseController
 
                 $material->insertMaterial($data);
                 
-                // Send notification about material upload
+                // Send notification to enrolled students about new material
                 $notificationHelper = new NotificationHelper();
                 $courseData = $course->find($course_id);
-                $uploaderName = (new \App\Models\UserModel())->find(session()->get('user_id'))['name'] ?? 'Unknown User';
-                $notificationHelper->notifyMaterialUploaded(
+                $uploaderName = session()->get('name') ?? 'Unknown User';
+                $notifiedCount = $notificationHelper->notifyEnrolledStudents(
+                    $course_id,
                     $file->getClientName(),
                     $courseData['title'] ?? 'Unknown Course',
                     $uploaderName
                 );
+                
+                log_message('info', "Material uploaded: {$file->getClientName()} - {$notifiedCount} students notified");
                 
                 return redirect()->to(current_url())->with('success', 'Material uploaded successfully.');
             }
@@ -126,17 +130,18 @@ class Materials extends BaseController
             return redirect()->to('/login');
         }
 
-        // NOTE: Add instructor role check here
-        // Example: if(session()->get('role') !== 'instructor') {
-        //     return redirect()->back()->with('error', 'Unauthorized access.');
-        // }
+        // Check if user is teacher or admin
+        $userRole = session()->get('role');
+        if (!in_array($userRole, ['teacher', 'admin'])) {
+            return redirect()->back()->with('error', 'Only teachers and admins can delete materials.');
+        }
 
         $material = new MaterialModel();
         $file = $material->find($material_id);
 
         if ($file) {
             // Get course and user info for notification
-            $course = new courseModel();
+            $course = new CourseModel();
             $courseData = $course->find($file['course_id']);
             $deleterName = (new \App\Models\UserModel())->find(session()->get('user_id'))['name'] ?? 'Unknown User';
             
@@ -178,21 +183,21 @@ class Materials extends BaseController
         $file = $material->find($material_id);
 
         if ($file) {
-            // NOTE: ENROLLMENT CHECK - Verify user is enrolled in the course
-            // Uncomment and adjust the following code to match your database structure:
+            // ENROLLMENT CHECK - Verify user is enrolled in the course
+            $db = \Config\Database::connect();
+            $builder = $db->table('enrollments');
+            $enrollment = $builder->where([
+                'user_id' => session()->get('user_id'),
+                'course_id' => $file['course_id'],
+            ])->whereIn('status', ['approved', 'enrolled'])
+             ->where('deleted_at IS NULL')
+             ->get()->getRow();
             
-            // $db = \Config\Database::connect();
-            // $builder = $db->table('enrollments'); // Adjust table name if needed
-            // $enrollment = $builder->where([
-            //     'user_id' => session()->get('id'),        // Adjust column name if needed
-            //     'course_id' => $file['course_id'],        // Adjust column name if needed
-            //     'status' => 'active'                      // Adjust status value if needed
-            // ])->get()->getRow();
-            // 
-            // // Allow instructors to bypass enrollment check
-            // if (!$enrollment && session()->get('role') !== 'instructor') {
-            //     return redirect()->back()->with('error', 'You must be enrolled in this course to download materials.');
-            // }
+            // Allow teachers and admins to bypass enrollment check
+            $userRole = session()->get('role');
+            if (!$enrollment && !in_array($userRole, ['teacher', 'admin'])) {
+                return redirect()->back()->with('error', 'You must be enrolled in this course to download materials.');
+            }
 
             // Construct the correct file path inside writable folder
             $filePath = WRITEPATH . $file['file_path'];
